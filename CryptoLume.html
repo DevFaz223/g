@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoLume</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+            position: relative;
+        }
+        .dark-theme {
+            background-color: #121212;
+            color: white;
+        }
+        .light-theme {
+            background-color: white;
+            color: black;
+        }
+        h1 {
+            color: #f4b400;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            cursor: pointer;
+            padding: 10px;
+            background: #f4b400;
+            color: black;
+            border-radius: 5px;
+        }
+        .active-tab {
+            background: #c08c00;
+        }
+        table {
+            width: 90%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #1e1e1e;
+        }
+        .light-theme table {
+            background: #f4f4f4;
+        }
+        th, td {
+            padding: 12px;
+            border: none;
+            text-align: center;
+            font-size: 16px;
+        }
+        img {
+            width: 35px;
+            height: 35px;
+            vertical-align: middle;
+        }
+        .crypto-row:hover {
+            background: #222;
+            cursor: pointer;
+        }
+        .light-theme .crypto-row:hover {
+            background: #ddd;
+        }
+        #market-cap {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        .theme-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            padding: 10px;
+            font-size: 20px;
+        }
+        #converter {
+            margin-top: 20px;
+            padding: 20px;
+            background: #1e1e1e;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        .light-theme #converter {
+            background: #f4f4f4;
+        }
+        input, select, button {
+            margin: 5px;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        #search {
+            width: 50%;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body class="dark-theme">
+    <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+    <h1>CryptoLume</h1>
+    <div id="market-cap">Глобальная капитализация: Загрузка...</div>
+    <input type="text" id="search" placeholder="Поиск криптовалют" oninput="filterCrypto()">
+    <table id="crypto-table">
+        <thead>
+            <tr>
+                <th>Логотип</th>
+                <th>Название</th>
+                <th>Цена (USD)</th>
+            </tr>
+        </thead>
+        <tbody id="crypto-list"></tbody>
+    </table>
+    <div id="converter">
+        <h2>Конвертер валют</h2>
+        <input type="number" id="amount" placeholder="Введите сумму">
+        <select id="from"></select>
+        <select id="to"></select>
+        <button onclick="convert()">Конвертировать</button>
+        <div id="result"></div>
+    </div>
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const button = document.querySelector('.theme-toggle');
+            if (body.classList.contains('dark-theme')) {
+                body.classList.replace('dark-theme', 'light-theme');
+                button.innerHTML = '☀️';
+            } else {
+                body.classList.replace('light-theme', 'dark-theme');
+                button.innerHTML = '🌙';
+            }
+        }
+        async function fetchCryptoData() {
+            try {
+                const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
+                const globalData = await globalResponse.json();
+                document.getElementById('market-cap').textContent = `Глобальная капитализация: $${globalData.data.total_market_cap.usd.toLocaleString()}`;
+                
+                const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd');
+                const data = await response.json();
+                const cryptoList = document.getElementById('crypto-list');
+                const fromSelect = document.getElementById('from');
+                const toSelect = document.getElementById('to');
+                cryptoList.innerHTML = '';
+                fromSelect.innerHTML = '';
+                toSelect.innerHTML = '';
+                data.forEach(coin => {
+                    const row = `<tr class="crypto-row" onclick="window.open('https://www.coingecko.com/en/coins/${coin.id}', '_blank')">
+                        <td><img src="${coin.image}" alt="${coin.name}"></td>
+                        <td>${coin.name} (${coin.symbol.toUpperCase()})</td>
+                        <td>$${coin.current_price.toFixed(2)}</td>
+                    </tr>`;
+                    cryptoList.innerHTML += row;
+                    fromSelect.innerHTML += `<option value="${coin.current_price}">${coin.name} (${coin.symbol.toUpperCase()})</option>`;
+                    toSelect.innerHTML += `<option value="${coin.current_price}">${coin.name} (${coin.symbol.toUpperCase()})</option>`;
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки данных:', error);
+            }
+        }
+        function filterCrypto() {
+            const searchValue = document.getElementById('search').value.toLowerCase();
+            const rows = document.querySelectorAll('#crypto-table tbody tr');
+            rows.forEach(row => {
+                const name = row.cells[1].innerText.toLowerCase();
+                row.style.display = name.includes(searchValue) ? '' : 'none';
+            });
+        }
+        function convert() {
+            const amount = document.getElementById('amount').value;
+            const fromRate = document.getElementById('from').value;
+            const toRate = document.getElementById('to').value;
+            const result = (amount * (fromRate / toRate)).toFixed(6);
+            document.getElementById('result').textContent = `Результат: ${result}`;
+        }
+        fetchCryptoData();
+    </script>
+</body>
+</html>
